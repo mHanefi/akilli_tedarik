@@ -40,4 +40,4 @@ class SBA:
             if p[t] != 0:
                 forecast[t] = (1 - (self.alpha / 2)) * (z[t] / p[t])
 
-        return pd.Series(forecast)
+        return pd.Series(forecast) 

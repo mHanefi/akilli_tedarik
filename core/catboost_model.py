@@ -18,5 +18,5 @@ class CatBoostModel:
         # Modeli eğitiyoruz
         self.model.fit(X, y)
 
-    def predict(self, X):
+    def predict(self, X): 
         return self.model.predict(X)

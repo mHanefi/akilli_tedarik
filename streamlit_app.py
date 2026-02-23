@@ -265,4 +265,4 @@ with tab_ai:
         st.markdown("""
         **Sistem Mimarisi Notu:**
         Tahmin motorumuz salt bir makine öğrenmesi modeli değildir. Operasyonel gürültü **ADIDA** ile filtrelenmiş, parçanın eskime (obsolescence) ihtimali **TSB** ile matematiksel olarak modellenmiş ve bu veriler **CatBoost**'a birer öznitelik (feature) olarak verilmiştir.
-        """)
+        """) 

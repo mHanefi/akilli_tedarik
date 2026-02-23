@@ -41,4 +41,4 @@ class TSB:
             'tsb_forecast': forecast,
             'tsb_probability': p,  # CatBoost'a "Eskime Sinyali" olarak gidecek!
             'tsb_magnitude': z     # CatBoost'a "Referans Miktar" olarak gidecek!
-        })
+        }) 

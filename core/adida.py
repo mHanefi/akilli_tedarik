@@ -24,4 +24,4 @@ class ADIDA:
         )
         
         # Orijinal boyuta kırp (Artık veri gürültüden arındırılmış düzeltilmiş seri)
-        return pd.Series(disaggregated[:n], index=series.index)
+        return pd.Series(disaggregated[:n], index=series.index) 

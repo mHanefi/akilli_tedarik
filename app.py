@@ -224,4 +224,4 @@ if __name__ == "__main__":
             lot_size=sku_lot_size, birim_fiyat=sku_fiyat
         )
         
-        print(f"--- {sku} --- | Sipariş: {result['final_order_qty']} Adet | Maliyet: €{result['toplam_maliyet_euro']}")
+        print(f"--- {sku} --- | Sipariş: {result['final_order_qty']} Adet | Maliyet: €{result['toplam_maliyet_euro']}") 

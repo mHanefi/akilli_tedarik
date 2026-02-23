@@ -39,4 +39,4 @@ def load_and_preprocess_data(file_path):
         processed_dfs.append(sku_df)
 
     final_df = pd.concat(processed_dfs, ignore_index=True)
-    return final_df
+    return final_df 
