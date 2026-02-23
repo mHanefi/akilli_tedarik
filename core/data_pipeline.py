@@ -1,76 +1,42 @@
 import pandas as pd
 import numpy as np
 
+def load_and_preprocess_data(file_path):
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.read_excel(file_path)
 
-def load_data(file):
-    df = pd.read_excel(file)
+    df.columns = df.columns.str.lower()
+    df = df.dropna(subset=["date", "demand"])
+    df = df[df["demand"] >= 0]
+    df["date"] = pd.to_datetime(df["date"])
 
-    # Zorunlu kolon kontrolü
-    required_columns = ["Date", "SKU", "Demand"]
-    for col in required_columns:
-        if col not in df.columns:
-            raise ValueError(f"{col} sütunu eksik!")
+    # Yeni finansal ve operasyonel kolonları da koruyarak topla
+    agg_funcs = {"demand": "sum"}
+    for col in ["lead_time", "parca_ailesi", "arac_modeli", "birim_fiyat", "lot_size"]:
+        if col in df.columns:
+            agg_funcs[col] = "first"
+            
+    df = df.groupby(["date", "sku"], as_index=False).agg(agg_funcs)
 
-    # Veri tip dönüşümleri
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df["Demand"] = pd.to_numeric(df["Demand"], errors="coerce")
+    processed_dfs = []
+    for sku in df["sku"].unique():
+        sku_df = df[df["sku"] == sku].copy()
+        full_date_range = pd.date_range(start=sku_df["date"].min(), end=sku_df["date"].max(), freq="W") 
+        
+        sku_df = sku_df.set_index("date")
+        sku_df = sku_df.reindex(full_date_range)
+        sku_df["demand"] = sku_df["demand"].fillna(0)
+        sku_df["sku"] = sku
+        
+        # Tüm statik bilgileri boş haftalara yay
+        for col in ["lead_time", "parca_ailesi", "arac_modeli", "birim_fiyat", "lot_size"]:
+            if col in sku_df.columns:
+                sku_df[col] = sku_df[col].ffill().bfill()
+            
+        sku_df = sku_df.rename_axis("date").reset_index()
+        processed_dfs.append(sku_df)
 
-    # Eksik ve hatalı değer temizleme
-    df = df.dropna(subset=["Date", "Demand"])
-    df = df[df["Demand"] >= 0]
-
-    # Eğer aynı gün aynı SKU birden fazla varsa topluyoruz
-    df = (
-        df.groupby(["Date", "SKU"], as_index=False)
-        .agg({"Demand": "sum"})
-    )
-
-    return df
-
-
-def preprocess_data(df):
-    df = df.sort_values(["SKU", "Date"])
-
-    result = []
-    sku_summary_list = []
-
-    for sku in df["SKU"].unique():
-        sku_df = df[df["SKU"] == sku].copy()
-
-        # Günlük tam tarih aralığı oluştur
-        full_date_range = pd.date_range(
-            start=sku_df["Date"].min(),
-            end=sku_df["Date"].max(),
-            freq="D"
-        )
-
-        sku_df = sku_df.set_index("Date")
-        sku_df = sku_df.reindex(full_date_range, fill_value=0)
-        sku_df["SKU"] = sku
-        sku_df = sku_df.rename_axis("Date").reset_index()
-
-        # --- İSTATİSTİK ÖZETLER ---
-        total_days = len(sku_df)
-        zero_days = (sku_df["Demand"] == 0).sum()
-        zero_ratio = zero_days / total_days
-
-        mean_demand = sku_df["Demand"].mean()
-        std_demand = sku_df["Demand"].std()
-        var_demand = sku_df["Demand"].var()
-
-        sku_summary_list.append({
-            "SKU": sku,
-            "Total_Days": total_days,
-            "Zero_Days": zero_days,
-            "Zero_Ratio": zero_ratio,
-            "Mean_Demand": mean_demand,
-            "Std_Demand": std_demand,
-            "Variance_Demand": var_demand
-        })
-
-        result.append(sku_df)
-
-    final_df = pd.concat(result, ignore_index=True)
-    sku_summary_df = pd.DataFrame(sku_summary_list)
-
-    return final_df, sku_summary_df
+    final_df = pd.concat(processed_dfs, ignore_index=True)
+    return final_df
