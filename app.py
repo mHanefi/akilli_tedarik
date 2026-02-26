@@ -52,7 +52,7 @@ def train_and_validate_model(X, y, cat_features):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     
     eval_model = CatBoostModel(cat_features=cat_features)
-    eval_model.train(X_train, y_train)
+    eval_model.train(X_train, y_train, eval_set=(X_test, y_test))
     preds = np.maximum(eval_model.predict(X_test), 0)
     
     mase_val = calculate_mase(y_test, preds, y_train)
@@ -65,22 +65,28 @@ def train_and_validate_model(X, y, cat_features):
         "MASE": round(mase_val, 3)
     }
     
+    best_iteration = eval_model.get_best_iteration()
+    if best_iteration is None: best_iteration = 500
+        
     final_model = CatBoostModel(cat_features=cat_features)
+    final_model.model.set_params(iterations=best_iteration) 
     final_model.train(X, y)
-    return final_model, metrics
+    
+    # Modelin içine bakıyoruz (Açıklanabilir YZ için)
+    feat_imp = final_model.get_feature_importance()
+    
+    return final_model, metrics, feat_imp
 
 def forecast_future_for_sku(model, last_row, future_plan_df, forecast_steps=8):
     future_predictions = []
     current_row = last_row.copy()
     plan_sorted = future_plan_df.sort_values("date")
     
-    # Tüm üretim kolonlarını (10 aracı birden) tespit et
     uretim_cols = [c for c in plan_sorted.columns if c.startswith("uretim_")]
     idx = current_row.index[0] 
     
     for step in range(forecast_steps):
         if step < len(plan_sorted):
-            # Model, gelecekteki 10 aracın üretim planını tek tek okuyor
             for u_col in uretim_cols:
                 if u_col in plan_sorted.columns:
                     current_row.loc[idx, u_col] = plan_sorted.iloc[step][u_col]

@@ -85,7 +85,8 @@ def load_demand(path: str): return load_and_preprocess_data(path)
 @st.cache_data(show_spinner=False)
 def load_plan(path: str, ext: str): return pd.read_csv(path) if ext == ".csv" else pd.read_excel(path)
 
-for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metrics": {}, "financials": {}}.items():
+# feat_imp key'i eklendi!
+for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metrics": {}, "financials": {}, "feat_imp": pd.DataFrame()}.items():
     if key not in st.session_state: st.session_state[key] = default
 
 with st.sidebar:
@@ -145,8 +146,11 @@ with tab_in:
                     
                     X = g_df.drop(["date", "demand", "mevcut_stok", "lot_size", "birim_fiyat"], axis=1, errors='ignore')
                     y = g_df["demand"]
-                    model, metrics = train_and_validate_model(X, y, ["sku","parca_ailesi"])
+                    
+                    # 3 değişkeni de alıyoruz!
+                    model, metrics, feat_imp = train_and_validate_model(X, y, ["sku","parca_ailesi"])
                     st.session_state.metrics = metrics
+                    st.session_state.feat_imp = feat_imp # YZ karar ağırlıkları kaydedildi
                     
                     res_list = []; total_yeni_maliyet = 0.0; total_eski_maliyet = 0.0
                     for sku in df["sku"].unique():
@@ -161,15 +165,10 @@ with tab_in:
                         lot = last["lot_size"].values[0]
                         fiyat = last["birim_fiyat"].values[0]
                         
-                        # 1. YAPAY ZEKA DESTEKLİ OPTİMUM SİPARİŞ HESABI (Yeni Bütçe)
                         fcast = forecast_future_for_sku(model, last, plan_df, forecast_steps)
                         opt = optimize_inventory(fcast, hist_demand, lt, review_period, service_level, stok, lot, fiyat)
                         total_yeni_maliyet += opt["toplam_maliyet_euro"]
                         
-                        # =========================================================================
-                        # 2. GELENEKSEL (NAIVE) KANBAN SİMÜLASYONU (MEVCUT BÜTÇE HESABI)
-                        # Fabrika şu an yapay zeka kullanmıyor. Sadece geçmiş ortalamaya bakıp 
-                        # yüksek emniyet payı (%99 z=2.33) ile sipariş veriyorlar.
                         mean_hist = np.mean(hist_demand)
                         std_hist = np.std(hist_demand) if np.std(hist_demand) > 0 else 0.1
                         
@@ -184,7 +183,6 @@ with tab_in:
                             eski_siparis_adet = 0
                             
                         total_eski_maliyet += (eski_siparis_adet * fiyat)
-                        # =========================================================================
                         
                         res_list.append({
                             "SKU": sku, 
@@ -200,7 +198,6 @@ with tab_in:
                     
                     st.session_state.results_df = pd.DataFrame(res_list).sort_values("Risk", ascending=False).reset_index(drop=True)
                     
-                    # FİNANSALLAR ARTIK GERÇEK SİMÜLASYONA DAYALI!
                     fark = total_eski_maliyet - total_yeni_maliyet
                     st.session_state.financials = {
                         "new": total_yeni_maliyet, 
@@ -220,7 +217,6 @@ with tab_dash:
         f = st.session_state.financials; r = st.session_state.results_df
         k1, k2, k3 = st.columns(3)
         
-        # Tasarruf mu ettik, Üretimi Kurtarmaya Fazla mı Harcadık Dinamiği
         if f["fark"] > 0:
             fark_text = f"<div style='color:#10b981; font-weight:bold; font-size: 0.9rem; margin-top:3px;'>↓ €{f['fark']:,.2f} Stok Tasarrufu</div>"
         elif f["fark"] < 0:
@@ -309,3 +305,17 @@ with tab_ai:
 
 </div>
 """, unsafe_allow_html=True)
+
+        # XAI (Explainable AI) Karar Ağırlıkları Grafiği
+        st.markdown("<h4 style='color: #D4AF37; margin-top: 40px;'>🔍 Açıklanabilir Yapay Zeka: Model Karar Ağırlıkları</h4>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #94a3b8; font-size: 0.85rem;'>Yapay zekanın siparişleri hesaplarken hangi verilere ne oranda (% olarak) güvendiğini gösterir. Bu sayede model bir 'Kara Kutu' olmaktan çıkar.</p>", unsafe_allow_html=True)
+        
+        fi_df = st.session_state.feat_imp
+        if not fi_df.empty:
+            top_fi = fi_df.head(10).sort_values(by="Importances", ascending=True)
+            fig = px.bar(top_fi, x="Importances", y="Feature Id", orientation='h', 
+                         color="Importances", color_continuous_scale="YlOrRd",
+                         text_auto='.1f')
+            fig.update_layout(template="plotly_dark", showlegend=False, height=400,
+                              xaxis_title="Karar Etkisi (%)", yaxis_title="Veri Tipi (Öznitelik)")
+            st.plotly_chart(fig, use_container_width=True)
