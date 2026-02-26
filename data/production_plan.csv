@@ -1,33 +1,9 @@
-date,arac_modeli,planlanan_uretim
-2026-01-04,Lion's City,23
-2026-01-04,NEOPLAN Tourliner,11
-2026-01-04,Lion's Coach,20
-2026-01-04,Lion's Intercity,19
-2026-01-11,Lion's City,26
-2026-01-11,NEOPLAN Tourliner,12
-2026-01-11,Lion's Coach,17
-2026-01-11,Lion's Intercity,22
-2026-01-18,Lion's City,22
-2026-01-18,NEOPLAN Tourliner,11
-2026-01-18,Lion's Coach,24
-2026-01-18,Lion's Intercity,26
-2026-01-25,Lion's City,21
-2026-01-25,NEOPLAN Tourliner,15
-2026-01-25,Lion's Coach,16
-2026-01-25,Lion's Intercity,25
-2026-02-01,Lion's City,28
-2026-02-01,NEOPLAN Tourliner,16
-2026-02-01,Lion's Coach,17
-2026-02-01,Lion's Intercity,26
-2026-02-08,Lion's City,22
-2026-02-08,NEOPLAN Tourliner,14
-2026-02-08,Lion's Coach,23
-2026-02-08,Lion's Intercity,20
-2026-02-15,Lion's City,26
-2026-02-15,NEOPLAN Tourliner,17
-2026-02-15,Lion's Coach,15
-2026-02-15,Lion's Intercity,21
-2026-02-22,Lion's City,23
-2026-02-22,NEOPLAN Tourliner,16
-2026-02-22,Lion's Coach,22
-2026-02-22,Lion's Intercity,18
+date,uretim_Lions_City_12,uretim_Lions_City_18E,uretim_Lions_Coach,uretim_Lions_Intercity,uretim_NEOPLAN_Tourliner,uretim_NEOPLAN_Skyliner,uretim_NEOPLAN_Cityliner,uretim_Lions_Chassis,uretim_TGE_Minibus,uretim_eTGE
+2026-01-04,21,7,11,23,15,11,22,6,6,21
+2026-01-11,22,14,12,5,20,14,6,7,16,22
+2026-01-18,10,14,5,19,8,11,5,16,7,23
+2026-01-25,23,23,7,12,24,5,19,24,24,21
+2026-02-01,8,18,12,6,9,23,9,9,16,18
+2026-02-08,5,6,19,7,18,20,24,9,21,13
+2026-02-15,12,5,9,18,20,23,15,10,14,12
+2026-02-22,11,22,7,18,22,8,14,13,18,6

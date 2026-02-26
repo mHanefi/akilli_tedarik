@@ -1,9 +1,12 @@
 import os
+import io
 import tempfile
 import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import math
+import numpy as np
 
 from core.data_pipeline import load_and_preprocess_data
 from app import (
@@ -27,7 +30,6 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     .stApp {
         background: radial-gradient(circle at 15% 20%, #1f2a44 0%, transparent 22%),
@@ -36,30 +38,47 @@ st.markdown(
                     linear-gradient(135deg, #0b1020 0%, #111827 45%, #0a0f1f 100%);
         color: #e5e7eb;
     }
-    .glass-card {
-        background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 18px; backdrop-filter: blur(8px); padding: 1rem 1.1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    .glass-card { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 18px; backdrop-filter: blur(8px); padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    .hero-title { font-size: 2.2rem; font-weight: 800; color: #D4AF37; margin-bottom: 0.2rem; }
+    .hero-sub { color: #cbd5e1; font-size: 1.1rem; font-weight: 500; }
+    
+    .kpi { border-radius: 16px; padding: 1.2rem; background: linear-gradient(145deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05)); border: 1px solid rgba(212, 175, 55, 0.3); border-left: 5px solid #D4AF37; transition: 0.3s; }
+    .kpi:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
+    .kpi-title { color: #cbd5e1; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+    .kpi-value { color: #ffffff; font-size: 1.9rem; font-weight: 800; margin-top: 5px; }
+    
+    .tooltip-icon {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(212, 175, 55, 0.5);
+        color: #D4AF37; font-size: 0.75rem; font-weight: bold; cursor: help;
+        margin-left: 5px; transition: 0.2s;
     }
-    .hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.3rem; color: #D4AF37; }
-    .hero-sub { color: #cbd5e1; font-size: 1.15rem; font-weight: 500; margin-bottom: 0; }
-    .kpi { border-radius: 16px; padding: 0.85rem 1rem; background: linear-gradient(145deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05)); border: 1px solid rgba(212, 175, 55, 0.3); border-left: 4px solid #D4AF37; }
-    .kpi-title { color: #cbd5e1; font-size: 0.84rem; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 1px; }
-    .kpi-value { color: #ffffff; font-size: 1.6rem; font-weight: 700; }
-    .kpi-delta { color: #10b981; font-size: 0.9rem; font-weight: bold; margin-top: 5px; }
+    .tooltip-icon:hover { background: rgba(212, 175, 55, 0.2); box-shadow: 0 0 8px rgba(212, 175, 55, 0.4); }
+
     .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 0; }
-    .stTabs [data-baseweb="tab"] { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; color: #d1d5db; padding: 8px 16px; height: auto; }
-    .stTabs [aria-selected="true"] { background: linear-gradient(90deg, #D4AF37, #FDE047); color: #000000 !important; font-weight: bold; }
-    .stButton > button { background: linear-gradient(90deg, #D4AF37, #FDE047); color: #000; border: 0; border-radius: 10px; font-weight: 800; padding: 0.6rem 1rem; transition: 0.3s; font-size: 1.1rem; }
-    .stButton > button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); }
-    .metric-expl { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border-left: 4px solid #34d399; margin-top: 15px; }
+    .stTabs [data-baseweb="tab"] { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; color: #d1d5db; padding: 10px 20px; }
+    .stTabs [aria-selected="true"] { background: linear-gradient(90deg, #D4AF37, #FDE047); color: #000 !important; font-weight: bold; }
+    .stButton > button { background: linear-gradient(90deg, #D4AF37, #FDE047); color: #000; border: 0; border-radius: 10px; font-weight: 800; padding: 0.8rem; font-size: 1.1rem; transition: transform 0.2s; }
+    .stButton > button:hover { transform: translateY(-2px); }
+
+    .glass-metric {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+        backdrop-filter: blur(10px); border: 1px solid rgba(212, 175, 55, 0.2);
+        border-top: 4px solid #D4AF37; border-radius: 16px; padding: 25px 15px;
+        text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .glass-metric:hover {
+        transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0,0,0,0.4);
+        border-color: rgba(212, 175, 55, 0.6); background: linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(255,255,255,0.03) 100%);
+    }
+    .m-title { color: #cbd5e1; font-size: 0.95rem; font-weight: 600; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 6px; }
+    .m-val { color: #ffffff; font-size: 2.8rem; font-weight: 800; margin-bottom: 10px; }
+    .m-sub { font-size: 0.85rem; font-weight: 700; padding: 5px 12px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.05); letter-spacing: 0.5px; }
     </style>
-    """,
-    unsafe_allow_html=True,
+    """, unsafe_allow_html=True
 )
 
-# =========================================================
-# 2. STATE (HAFIZA) YÖNETİMİ & CACHE
-# =========================================================
 @st.cache_data(show_spinner=False)
 def load_demand(path: str): return load_and_preprocess_data(path)
 
@@ -69,189 +88,224 @@ def load_plan(path: str, ext: str): return pd.read_csv(path) if ext == ".csv" el
 for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metrics": {}, "financials": {}}.items():
     if key not in st.session_state: st.session_state[key] = default
 
-# =========================================================
-# 3. KONTROL MERKEZİ (SİDEBAR)
-# =========================================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #D4AF37; margin-top: 0;'>🚌 MAN Türkiye</h2>", unsafe_allow_html=True)
-    st.markdown("---")
-    
+    st.markdown("<h2 style='text-align: center; color: #D4AF37; margin-bottom: 30px;'>🚌 MAN Türkiye</h2>", unsafe_allow_html=True)
     st.markdown("### ⚙️ Operasyon Parametreleri")
-    review_period = st.slider("📆 Gözden Geçirme (Hafta)", 1, 12, 4)
-    service_level = st.slider("🛡️ Hedef Hizmet Düzeyi", 0.80, 0.99, 0.95, 0.01)
-    forecast_steps = st.slider("🔮 Tahmin Ufku (Hafta)", 4, 16, 8)
-    st.markdown("---")
+    review_period = st.slider("📆 Gözden Geçirme (Hafta)", 1, 12, 4, help="Siparişlerin ne sıklıkla değerlendirilip sisteme girileceğini belirler. Örneğin: 4, ayda bir kez sipariş verileceği anlamına gelir.")
+    service_level = st.slider("🛡️ Hedef Hizmet Düzeyi", 0.80, 0.99, 0.95, 0.01, help="İstenen stok bulunabilirlik oranıdır. %95, üretim bandında parçanın %95 ihtimalle hazır bulunmasını hedefler.")
+    forecast_steps = st.slider("🔮 Tahmin Ufku (Hafta)", 4, 16, 8, help="Yapay zekanın gelecekteki kaç haftanın tüketimini öngöreceğini belirler.")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown(
-        """
-        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 5px solid #D4AF37; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-            <p style="margin:0; font-size: 1rem; color: #D4AF37; font-weight: 800;">🎓 Gazi Üniversitesi</p>
-            <p style="margin:0; font-size: 0.85rem; color: #cbd5e1; font-weight: 500;">Endüstri Mühendisliği</p>
-            <hr style="margin: 12px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
-            <p style="margin:0 0 4px 0; font-size: 0.8rem; color: #a1a1aa; text-transform: uppercase;">Danışman</p>
-            <p style="margin:0 0 12px 0; font-size: 0.9rem; color: #fff; font-weight: 600;">Prof. Dr. Gül Didem Batur Sir</p>
-            <p style="margin:0 0 4px 0; font-size: 0.8rem; color: #a1a1aa; text-transform: uppercase;">Proje Ekibi</p>
-            <p style="margin:0 0 2px 0; font-size: 0.85rem; color: #fff;">• Ayşegül Çoban</p>
-            <p style="margin:0 0 2px 0; font-size: 0.85rem; color: #fff;">• Ezgi Ece Mart</p>
-            <p style="margin:0 0 0 0; font-size: 0.85rem; color: #fff;">• M. Hanefi Yazar</p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+"""<div style="background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 16px; padding: 22px 18px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative; overflow: hidden;">
+<div style="position: absolute; top: -15px; right: -15px; opacity: 0.08; font-size: 90px;">🎓</div>
+<p style="margin:0; font-size: 1.15rem; color: #D4AF37; font-weight: 800; letter-spacing: 0.5px;">GAZİ ÜNİVERSİTESİ</p>
+<p style="margin:0 0 15px 0; font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Endüstri Mühendisliği</p>
+<div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+<p style="margin:0 0 3px 0; font-size: 0.7rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 1px;">Proje Danışmanı</p>
+<p style="margin:0; font-size: 0.9rem; color: #f8fafc; font-weight: 600;">Prof. Dr. Gül Didem Batur Sir</p>
+</div>
+<div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+<p style="margin:0 0 5px 0; font-size: 0.7rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 1px;">Geliştirici Ekip</p>
+<p style="margin:0 0 4px 0; font-size: 0.85rem; color: #e2e8f0;">• Ayşegül Çoban</p>
+<p style="margin:0 0 4px 0; font-size: 0.85rem; color: #e2e8f0;">• Ezgi Ece Mart</p>
+<p style="margin:0; font-size: 0.85rem; color: #D4AF37; font-weight: 600;">• M. Hanefi Yazar</p>
+</div>
+</div>""", unsafe_allow_html=True)
 
-# =========================================================
-# 4. ANA EKRAN İŞLEMLERİ VE SEKME YÖNETİMİ
-# =========================================================
 st.markdown(
-    """
-    <div class="glass-card">
-        <div class="hero-title">MAN Türkiye A.Ş. | Siparişleme Algoritması</div>
-        <p class="hero-sub">Kanban parçalar için Hibrit Envanter Optimizasyonu</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+"""<div class="glass-card">
+<div class="hero-title">MAN Türkiye A.Ş. | Siparişleme Algoritması</div>
+<p class="hero-sub">Kanban Parçalar için Çoklu Ürün Ağacı (BOM) & Hibrit (ADIDA+SBA+TSB+CatBoost) Envanter Optimizasyonu</p>
+</div>""", unsafe_allow_html=True)
 st.write("")
 
-tab_input, tab_dash, tab_table, tab_ai = st.tabs(["📥 Veri Yükleme", "🎯 Yönetici Özeti", "📋 Sipariş Tablosu", "🧠 AI Karnesi"])
+tab_in, tab_dash, tab_table, tab_ai = st.tabs(["📥 Veri Girişi", "🎯 Yönetici Özeti", "📋 Sipariş Tablosu", "🧠 Model Performans Analizi"])
 
-# ----------------- SEKME 1: VERİ YÜKLEME -----------------
-with tab_input:
+with tab_in:
+    st.info("💡 Lütfen geçmiş tüketim verilerini ve 10 farklı aracın üretim planını yükleyerek analizi başlatın.")
     c1, c2 = st.columns(2)
-    with c1:
-        uploaded_demand = st.file_uploader("📄 Geçmiş Talep (CSV/XLSX)", type=["csv", "xlsx"])
-    with c2:
-        uploaded_plan = st.file_uploader("🧾 Üretim Planı (CSV/XLSX)", type=["csv", "xlsx"])
-
-    st.write("")
+    with c1: up_demand = st.file_uploader("📄 Geçmiş Tüketim (.xlsx / .xls)", type=["xlsx", "xls", "csv"], help="40 Parçanın geçmişte haftalık olarak kaç adet tüketildiğini içeren tablo.")
+    with c2: up_plan = st.file_uploader("🧾 Üretim Planı (.xlsx / .xls)", type=["xlsx", "xls", "csv"], help="Önümüzdeki haftalarda 10 farklı MAN/NEOPLAN modelinden kaçar adet üretileceğini gösteren plan.")
     
-    if st.button("🚀 HİBRİT MODELİ ÇALIŞTIR VE ANALİZ ET", use_container_width=True):
-        if not (uploaded_demand and uploaded_plan):
-            st.error("⚠️ Lütfen analizi başlatmadan önce her iki dosyayı da yüklediğinizden emin olun!")
+    if st.button("🚀 ANALİZİ VE OPTİMİZASYONU BAŞLAT", use_container_width=True, help="Tüm verileri yapay zeka modeline gönderir ve optimum sipariş adetlerini hesaplar."):
+        if not (up_demand and up_plan): st.error("⚠️ Lütfen her iki dosyayı da yüklediğinizden emin olun!")
         else:
-            ext1 = os.path.splitext(uploaded_demand.name)[1].lower()
-            ext2 = os.path.splitext(uploaded_plan.name)[1].lower()
-
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext1) as td: td.write(uploaded_demand.getvalue()); demand_path = td.name
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext2) as tp: tp.write(uploaded_plan.getvalue()); plan_path = tp.name
+            ext_d = os.path.splitext(up_demand.name)[1].lower()
+            ext_p = os.path.splitext(up_plan.name)[1].lower()
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext_d) as td, tempfile.NamedTemporaryFile(delete=False, suffix=ext_p) as tp:
+                td.write(up_demand.getvalue()); tp.write(up_plan.getvalue())
+                d_path, p_path = td.name, tp.name
 
             try:
-                with st.spinner("Modeller eğitiliyor ve yüksek hızlı vektörel simülasyon koşuluyor... Lütfen bekleyin."):
-                    df = load_demand(demand_path); plan_df = load_plan(plan_path, ext2)
-                    global_df = build_global_dataset(df)
-
-                    X = global_df.drop(["date", "demand"], axis=1); y = global_df["demand"]
-                    cat_features = [c for c in ["sku", "parca_ailesi", "arac_modeli"] if c in X.columns]
-                    model, metrics = train_and_validate_model(X, y, cat_features)
+                with st.spinner("Çoklu araç üretim planları yapay zekaya entegre ediliyor ve siparişler hesaplanıyor..."):
+                    df = load_demand(d_path); plan_df = load_plan(p_path, ext_p)
+                    g_df = build_global_dataset(df)
+                    
+                    X = g_df.drop(["date", "demand", "mevcut_stok", "lot_size", "birim_fiyat"], axis=1, errors='ignore')
+                    y = g_df["demand"]
+                    model, metrics = train_and_validate_model(X, y, ["sku","parca_ailesi"])
                     st.session_state.metrics = metrics
-
-                    results = []; portfolio_cost = 0.0
-
+                    
+                    res_list = []; total_yeni_maliyet = 0.0; total_eski_maliyet = 0.0
                     for sku in df["sku"].unique():
-                        sku_data = global_df[global_df["sku"] == sku]
-                        if sku_data.empty: continue
-
-                        last_row = sku_data.drop(["date", "demand"], axis=1).iloc[-1:]
-
-                        lead_time = float(last_row["lead_time"].values[0]) if "lead_time" in last_row.columns else 1.0
-                        lot_size = int(last_row["lot_size"].values[0]) if "lot_size" in last_row.columns else 1
-                        unit_price = float(last_row["birim_fiyat"].values[0]) if "birim_fiyat" in last_row.columns else 0.0
-                        vehicle_model = last_row["arac_modeli"].values[0] if "arac_modeli" in last_row.columns else None
+                        s_data = g_df[g_df["sku"] == sku]
+                        if s_data.empty: continue
                         
-                        stk = int(last_row["mevcut_stok"].values[0]) if "mevcut_stok" in last_row.columns else 0
-
-                        forecast = forecast_future_for_sku(model, last_row, plan_df, vehicle_model, forecast_steps)
-                        opt = optimize_inventory(forecast, lead_time, review_period, service_level, stk, lot_size, unit_price)
-
-                        portfolio_cost += opt["toplam_maliyet_euro"]
-
-                        results.append({
-                            "SKU": sku, "Araç Modeli": vehicle_model, "Lead Time": int(lead_time), "Mevcut Stok": stk,
-                            "Birim Fiyat": unit_price, "Lot Size": int(opt["lot_size"]), "Sipariş": int(opt["final_order_qty"]),
-                            "Maliyet": float(opt["toplam_maliyet_euro"]), "Risk": float(opt["final_stockout_risk"]),
-                            "Yeterlilik (Hf)": float(opt.get("wos", 0.0)),
+                        hist_demand = s_data["demand"].values
+                        last = s_data.drop(["date", "demand"], axis=1).iloc[-1:]
+                        
+                        lt = last["lead_time"].values[0]
+                        stok = last["mevcut_stok"].values[0]
+                        lot = last["lot_size"].values[0]
+                        fiyat = last["birim_fiyat"].values[0]
+                        
+                        # 1. YAPAY ZEKA DESTEKLİ OPTİMUM SİPARİŞ HESABI (Yeni Bütçe)
+                        fcast = forecast_future_for_sku(model, last, plan_df, forecast_steps)
+                        opt = optimize_inventory(fcast, hist_demand, lt, review_period, service_level, stok, lot, fiyat)
+                        total_yeni_maliyet += opt["toplam_maliyet_euro"]
+                        
+                        # =========================================================================
+                        # 2. GELENEKSEL (NAIVE) KANBAN SİMÜLASYONU (MEVCUT BÜTÇE HESABI)
+                        # Fabrika şu an yapay zeka kullanmıyor. Sadece geçmiş ortalamaya bakıp 
+                        # yüksek emniyet payı (%99 z=2.33) ile sipariş veriyorlar.
+                        mean_hist = np.mean(hist_demand)
+                        std_hist = np.std(hist_demand) if np.std(hist_demand) > 0 else 0.1
+                        
+                        eski_emniyet = 2.33 * std_hist * math.sqrt(lt)
+                        eski_s = (mean_hist * lt) + eski_emniyet
+                        eski_S = (mean_hist * (lt + review_period)) + eski_emniyet
+                        
+                        if stok <= eski_s:
+                            ham_eski_siparis = max(eski_S - stok, 0)
+                            eski_siparis_adet = math.ceil(ham_eski_siparis / lot) * lot
+                        else:
+                            eski_siparis_adet = 0
+                            
+                        total_eski_maliyet += (eski_siparis_adet * fiyat)
+                        # =========================================================================
+                        
+                        res_list.append({
+                            "SKU": sku, 
+                            "Aile": last["parca_ailesi"].values[0], 
+                            "Lead Time": int(lt),
+                            "Stok": int(stok), 
+                            "Fiyat": fiyat,
+                            "Sipariş": opt["final_order_qty"], 
+                            "Maliyet": opt["toplam_maliyet_euro"],
+                            "Risk": opt["final_stockout_risk"], 
+                            "Yeterlilik (Hf)": opt["wos"]
                         })
-
-                    results_df = pd.DataFrame(results).sort_values("Maliyet", ascending=False)
-                    st.session_state.results_df = results_df
-                    st.session_state.financials = {"sku_count": len(results_df), "new_cost": portfolio_cost, "old_cost": portfolio_cost * 1.18, "savings": portfolio_cost * 0.18}
+                    
+                    st.session_state.results_df = pd.DataFrame(res_list).sort_values("Risk", ascending=False).reset_index(drop=True)
+                    
+                    # FİNANSALLAR ARTIK GERÇEK SİMÜLASYONA DAYALI!
+                    fark = total_eski_maliyet - total_yeni_maliyet
+                    st.session_state.financials = {
+                        "new": total_yeni_maliyet, 
+                        "old": total_eski_maliyet, 
+                        "fark": fark
+                    }
                     st.session_state.is_processed = True
+                    st.success("✅ 40 parçalık Çoklu BOM analizi başarıyla tamamlandı!")
+            except Exception as e: st.error(f"Sistem Hatası: {type(e).__name__} - {e}")
+            finally: 
+                if os.path.exists(d_path): os.unlink(d_path)
+                if os.path.exists(p_path): os.unlink(p_path)
 
-                    st.success("✅ Analiz başarıyla tamamlandı! Yukarıdan 'Yönetici Özeti' veya 'Sipariş Tablosu' sekmelerine geçebilirsiniz.")
-
-            except Exception as e: st.error(f"Sistem Hatası: {e}")
-            finally:
-                if "demand_path" in locals() and os.path.exists(demand_path): os.unlink(demand_path)
-                if "plan_path" in locals() and os.path.exists(plan_path): os.unlink(plan_path)
-
-# ----------------- SEKME 2: YÖNETİCİ ÖZETİ -----------------
 with tab_dash:
-    if not st.session_state.is_processed:
-        st.info("👈 Lütfen 'Veri Yükleme' sekmesinden modeli başlatın.")
+    if not st.session_state.is_processed: st.warning("Lütfen veri yükleyip analizi başlatın.")
     else:
-        res = st.session_state.results_df.copy(); fin = st.session_state.financials
-
+        f = st.session_state.financials; r = st.session_state.results_df
         k1, k2, k3 = st.columns(3)
-        k1.markdown(f"""<div class="kpi"><div class="kpi-title">📉 Mevcut Kanban Bütçesi</div><div class="kpi-value">€{fin['old_cost']:,.0f}</div></div>""", unsafe_allow_html=True)
-        k2.markdown(f"""<div class="kpi"><div class="kpi-title">💸 Optimize Satın Alma</div><div class="kpi-value">€{fin['new_cost']:,.0f}</div><div class="kpi-delta">↓ €{fin['savings']:,.0f} Tasarruf</div></div>""", unsafe_allow_html=True)
-        k3.markdown(f"""<div class="kpi"><div class="kpi-title">📦 Analiz Edilen Parça</div><div class="kpi-value">{fin['sku_count']} Adet</div></div>""", unsafe_allow_html=True)
-
+        
+        # Tasarruf mu ettik, Üretimi Kurtarmaya Fazla mı Harcadık Dinamiği
+        if f["fark"] > 0:
+            fark_text = f"<div style='color:#10b981; font-weight:bold; font-size: 0.9rem; margin-top:3px;'>↓ €{f['fark']:,.2f} Stok Tasarrufu</div>"
+        elif f["fark"] < 0:
+            fark_text = f"<div style='color:#f59e0b; font-weight:bold; font-size: 0.9rem; margin-top:3px;'>↑ €{abs(f['fark']):,.2f} Risk Önleyici Ek Sipariş</div>"
+        else:
+            fark_text = "<div style='color:#94a3b8; font-weight:bold; font-size: 0.9rem; margin-top:3px;'>Geleneksel Sistemle Eşit</div>"
+        
+        k1.markdown(f'<div class="kpi"><div class="kpi-title">📉 Mevcut Bütçe <span class="tooltip-icon" title="Eğer yapay zeka kullanılmasaydı; fabrikanın sadece geçmiş tüketim ortalamasına ve Min-Max güvenlik katsayılarına dayanarak vereceği kör siparişlerin maliyetidir.">?</span></div><div class="kpi-value">€{f["old"]:,.2f}</div></div>', unsafe_allow_html=True)
+        k2.markdown(f'<div class="kpi"><div class="kpi-title">💸 Optimize Bütçe <span class="tooltip-icon" title="Modelin gelecekteki üretim planını (MRP) hesaba katarak hesapladığı optimum siparişlerin maliyetidir.">?</span></div><div class="kpi-value">€{f["new"]:,.2f}</div>{fark_text}</div>', unsafe_allow_html=True)
+        k3.markdown(f'<div class="kpi"><div class="kpi-title">📦 Analiz Edilen Parça <span class="tooltip-icon" title="Sistemde başarıyla işlenen toplam C-Sınıfı ortak (BOM) parça sayısı.">?</span></div><div class="kpi-value">{len(r)} Adet</div></div>', unsafe_allow_html=True)
+        
         st.write("")
+        c_left, c_right = st.columns([1.5, 1])
+        with c_left: st.plotly_chart(px.bar(r, x="SKU", y="Sipariş", color="Aile", title="Parça Ailesine Göre Sipariş Dağılımı", template="plotly_dark"), use_container_width=True)
+        with c_right: st.plotly_chart(px.pie(r, names="Aile", values="Maliyet", hole=0.5, title="Bütçe Dağılımı", template="plotly_dark"), use_container_width=True)
 
-        left, right = st.columns([1.2, 1])
-        with left:
-            fig_bar = px.bar(res, x="SKU", y="Sipariş", color="Araç Modeli", title="🚚 Araçlara Göre Parça Sipariş Dağılımı", template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Set2)
-            fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", height=400)
-            st.plotly_chart(fig_bar, use_container_width=True)
-
-        with right:
-            pie_df = res.groupby("Araç Modeli", as_index=False)["Maliyet"].sum()
-            fig_pie = px.pie(pie_df, names="Araç Modeli", values="Maliyet", hole=0.55, title="🧩 Bütçe Dağılımı", template="plotly_dark")
-            fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", height=400)
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-# ----------------- SEKME 3: SİPARİŞ TABLOSU -----------------
 with tab_table:
     if not st.session_state.is_processed:
-        st.info("👈 Lütfen 'Veri Yükleme' sekmesinden modeli başlatın.")
+        st.warning("Lütfen veri yükleyip analizi başlatın.")
     else:
-        st.markdown("### 📋 Satın Alma İş Emirleri")
-        def highlight_risk(val): return 'color: #ff4b4b; font-weight: bold' if isinstance(val, (int, float)) and val < 2 else ''
-
-        try:
-            styled_df = st.session_state.results_df.style.format({"Birim Fiyat": "€{:.2f}", "Maliyet": "€{:.2f}", "Risk": "{:.1%}", "Yeterlilik (Hf)": "{:.1f}"}).map(highlight_risk, subset=["Yeterlilik (Hf)"]).highlight_max(axis=0, subset=["Maliyet"], color="#332900")
-        except AttributeError:
-             styled_df = st.session_state.results_df.style.format({"Birim Fiyat": "€{:.2f}", "Maliyet": "€{:.2f}", "Risk": "{:.1%}", "Yeterlilik (Hf)": "{:.1f}"}).applymap(highlight_risk, subset=["Yeterlilik (Hf)"]).highlight_max(axis=0, subset=["Maliyet"], color="#332900")
+        st.markdown("### 📋 Satın Alma İş Emirleri (Riske Göre Sıralı)")
         
-        st.dataframe(styled_df, use_container_width=True, height=450)
-        st.download_button("⬇️ Tabloyu İndir (CSV)", st.session_state.results_df.to_csv(index=False).encode("utf-8"), "man_opt_siparis.csv", "text/csv", use_container_width=True)
+        def style_dataframe(df):
+            return df.style.format({
+                "Fiyat": "€{:,.2f}", 
+                "Maliyet": "€{:,.2f}", 
+                "Risk": "{:.1%}", 
+                "Yeterlilik (Hf)": "{:.1f}"
+            }).background_gradient(subset=["Risk"], cmap="RdYlGn_r").applymap(
+                lambda val: 'font-weight: bold; color: #ef4444;' if val > 0.05 else ('font-weight: bold; color: #f59e0b;' if val > 0.01 else 'color: #10b981;'),
+                subset=["Risk"]
+            ).set_properties(**{
+                'background-color': '#1e293b',
+                'color': '#f8fafc',
+                'border': '1px solid #334155'
+            })
+            
+        st.dataframe(style_dataframe(st.session_state.results_df), use_container_width=True, height=500, hide_index=True)
+        
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            st.session_state.results_df.to_excel(writer, index=False, sheet_name='Siparisler')
+        
+        st.download_button(
+            label="📥 Tabloyu Excel Olarak İndir",
+            data=buffer.getvalue(),
+            file_name="man_siparis_listesi.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            help="Oluşturulan sipariş iş emirlerini tedarik birimine iletmek üzere gerçek bir .xlsx dosyası olarak indirir."
+        )
 
-# ----------------- SEKME 4: AI KARNESİ -----------------
 with tab_ai:
     if not st.session_state.is_processed:
-        st.info("👈 Lütfen 'Veri Yükleme' sekmesinden modeli başlatın.")
+        st.warning("Lütfen veri yükleyip analizi başlatın.")
     else:
-        st.markdown("### 🧠 Model Doğrulama Metrikleri")
-        
         m = st.session_state.metrics
-        c1, c2 = st.columns(2)
         
-        fig1 = go.Figure(go.Indicator(mode="number", value=m.get("MAE", 0), title={"text": "MAE<br><span style='font-size:0.75em;color:#cbd5e1'>Ortalama Mutlak Hata (Adet)</span>"}))
-        fig1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=220)
-        c1.plotly_chart(fig1, use_container_width=True)
+        mase = m.get("MASE", 0)
+        mase_col = "#10b981" if mase < 1.0 else "#ef4444"
+        mase_txt = "YZ Başarılı" if mase < 1.0 else "Standart Model"
         
-        fig2 = go.Figure(go.Indicator(mode="number", value=m.get("RMSE", 0), title={"text": "RMSE<br><span style='font-size:0.75em;color:#cbd5e1'>Risk Sapması (Adet)</span>"}))
-        fig2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=220)
-        c2.plotly_chart(fig2, use_container_width=True)
+        mae = m.get("MAE", 0)
+        rmse = m.get("RMSE", 0)
+        
+        st.markdown(f"""
+<div style="display: flex; gap: 20px; justify-content: space-between; flex-wrap: wrap; margin-top: 15px;">
 
-        st.markdown(
-            """
-            <div class="metric-expl">
-                <h4 style="margin-top:0; color: #D4AF37;">Performans Değerlendirmesi</h4>
-                <p style="margin-bottom: 12px; font-size: 1rem;">Literatür (Hyndman, 2006) ışığında, intermittent (kesikli) ve düzensiz talep verilerinde klasik % doğruluk metrikleri (R², MAPE vb.) matematiksel olarak çöktüğü için, sistemin güvenilirliği doğrudan hata ölçekleriyle (MAE ve RMSE) hesaplanmıştır.</p>
-                <p style="margin-bottom: 12px; font-size: 1rem;"><b>1. MAE (Ortalama Mutlak Hata):</b> Haftalık tahminde ortalama kaç parça yanılıyoruz sorusunun cevabıdır. Değerin, o parçanın ortalama sipariş miktarına göre küçük olması beklenir.</p>
-                <p style="margin-bottom: 0; font-size: 1rem;"><b>2. RMSE (Kök Ortalama Kare Hata):</b> Büyük yanılmaları (outliers) sert şekilde cezalandıran hata payıdır. RMSE değerinin MAE'ye yakın olması, sistemin "istikrarlı" çalıştığını kanıtlar.</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+<div class="glass-metric" style="flex: 1; min-width: 220px;">
+<div class="m-title">⚖️ MASE (ÖLÇEKLİ) <span class="tooltip-icon" title="Yapay zekanın standart (naif) tahmine göre ne kadar üstün olduğunu gösterir. BİTİRME RAPORU Sayfa 17'de açıklandığı üzere sistemin temel performans göstergesidir.">?</span></div>
+<div class="m-val" style="color: #D4AF37;">{mase}</div>
+<div class="m-sub" style="color: {mase_col}; border: 1px solid {mase_col}50; background: {mase_col}15;">Referans: < 1.0 ({mase_txt})</div>
+</div>
+
+<div class="glass-metric" style="flex: 1; min-width: 220px;">
+<div class="m-title">📦 MAE (ADET) <span class="tooltip-icon" title="Haftalık bazda tahmindeki ortalama adet sapmasıdır. Değerin küçük olup olmadığına, parçanın ortalama sipariş adedine (Mean Demand) bakılarak karar verilmelidir.">?</span></div>
+<div class="m-val" style="color: #D4AF37;">{mae}</div>
+<div class="m-sub" style="color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">Tüketim Hacmine Oranla Düşük Olmalı</div>
+</div>
+
+<div class="glass-metric" style="flex: 1; min-width: 220px;">
+<div class="m-title">🚨 RMSE (RİSK) <span class="tooltip-icon" title="Büyük sapmaları ve hataları sert cezalandıran (karesini alan) risk ölçeğidir. Yüzdelik değil, adet cinsindendir. Stoksuz kalma (Stock-out) riskini yönetmek için izlenir.">?</span></div>
+<div class="m-val" style="color: #D4AF37;">{rmse}</div>
+<div class="m-sub" style="color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">Tüketim Hacmine Oranla Düşük Olmalı</div>
+</div>
+
+</div>
+""", unsafe_allow_html=True)

@@ -12,9 +12,12 @@ def load_and_preprocess_data(file_path):
     df = df[df["demand"] >= 0]
     df["date"] = pd.to_datetime(df["date"])
 
-    # KRİTİK DÜZELTME: mevcut_stok kolonunun kaybolmaması için listeye eklendi
     agg_funcs = {"demand": "sum"}
-    for col in ["lead_time", "parca_ailesi", "arac_modeli", "birim_fiyat", "lot_size", "mevcut_stok"]:
+    meta_cols = ["lead_time", "parca_ailesi", "birim_fiyat", "lot_size", "mevcut_stok"]
+    # 10 farklı aracın uretim_ ile başlayan kolonlarını otomatik bulur
+    uretim_cols = [c for c in df.columns if c.startswith("uretim_")]
+    
+    for col in meta_cols + uretim_cols:
         if col in df.columns:
             agg_funcs[col] = "first"
             
@@ -30,13 +33,11 @@ def load_and_preprocess_data(file_path):
         sku_df["demand"] = sku_df["demand"].fillna(0)
         sku_df["sku"] = sku
         
-        # Tüm statik bilgileri ve STOK bilgisini boş haftalara yay
-        for col in ["lead_time", "parca_ailesi", "arac_modeli", "birim_fiyat", "lot_size", "mevcut_stok"]:
+        for col in meta_cols + uretim_cols:
             if col in sku_df.columns:
                 sku_df[col] = sku_df[col].ffill().bfill()
             
         sku_df = sku_df.rename_axis("date").reset_index()
         processed_dfs.append(sku_df)
 
-    final_df = pd.concat(processed_dfs, ignore_index=True)
-    return final_df
+    return pd.concat(processed_dfs, ignore_index=True)
