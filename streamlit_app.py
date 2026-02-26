@@ -90,7 +90,8 @@ for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metri
     if key not in st.session_state: st.session_state[key] = default
 
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #D4AF37; margin-bottom: 30px;'>🚌 MAN Türkiye</h2>", unsafe_allow_html=True)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/5/54/Logo_MAN.png", width=150)
+    st.markdown("<hr style='margin-top:0; margin-bottom:20px; border: 1px solid #D4AF37;'>", unsafe_allow_html=True)
     st.markdown("### ⚙️ Operasyon Parametreleri")
     review_period = st.slider("📆 Gözden Geçirme (Hafta)", 1, 12, 4, help="Siparişlerin ne sıklıkla değerlendirilip sisteme girileceğini belirler. Örneğin: 4, ayda bir kez sipariş verileceği anlamına gelir.")
     service_level = st.slider("🛡️ Hedef Hizmet Düzeyi", 0.80, 0.99, 0.95, 0.01, help="İstenen stok bulunabilirlik oranıdır. %95, üretim bandında parçanın %95 ihtimalle hazır bulunmasını hedefler.")
@@ -108,9 +109,9 @@ with st.sidebar:
 </div>
 <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
 <p style="margin:0 0 5px 0; font-size: 0.7rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 1px;">Geliştirici Ekip</p>
+<p style="margin:0; font-size: 0.85rem; color: #D4AF37; font-weight: 600;">• M. Hanefi Yazar</p>
 <p style="margin:0 0 4px 0; font-size: 0.85rem; color: #e2e8f0;">• Ayşegül Çoban</p>
 <p style="margin:0 0 4px 0; font-size: 0.85rem; color: #e2e8f0;">• Ezgi Ece Mart</p>
-<p style="margin:0; font-size: 0.85rem; color: #D4AF37; font-weight: 600;">• M. Hanefi Yazar</p>
 </div>
 </div>""", unsafe_allow_html=True)
 
