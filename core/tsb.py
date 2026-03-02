@@ -3,22 +3,21 @@ import pandas as pd
 from scipy.optimize import minimize
 
 # ========================================================================================================
-# [SİSTEM MİMARİSİ VE MÜHENDİSLİK NOTU - JÜRİ İÇİN]:
 # Bu dosya, klasik zaman serilerinin (ARIMA, Üstel Düzeltme) C-Sınıfı yedek parçalarda Neden Çöktüğünü
-# kanıtlayan ve buna çözüm üreten 'Teunter-Syntetos-Babai (TSB)' algoritmasının sıfırdan yazılmış halidir.
+# kanıtlayan ve buna çözüm üreten 'Teunter-Syntetos-Babai (TSB)' algoritmasının yeniden yazılmış halidir.
 #
 # NEDEN TSB KULLANDIK? (Croston Yerine Neden TSB?)
-# Ünlü Croston modeli, sadece talep geldiği zaman kendini günceller. Eğer bir parça "Ölü (Obsolescence)" 
+# Ünlü Croston modeli, sadece talep geldiği zaman kendini günceller. Eğer bir parça "Ölü" 
 # duruma geçerse ve aylarca talep görmezse, Croston hala o parçanın tüketildiğini sanır ve sipariş verir.
 # TSB modeli ise talebi İKİYE BÖLER:
-# 1. P(t): O hafta talebin gelme OLASILIĞI (Her hafta güncellenir, gelmezse olasılık düşer!)
+# 1. P(t): O hafta talebin gelme OLASILIĞI (Her hafta güncellenir, gelmezse olasılık düşer)
 # 2. Z(t): Talep gelirse KAÇ ADET (Büyüklük) geleceği.
 # İşte CatBoost'a bu iki ayrı zeka filtresini vererek, YZ'nin 'ölü' parçaları fark etmesini sağlıyoruz!
 # ========================================================================================================
 
 class TSB:
     def __init__(self, alpha="auto", beta="auto"):
-        # [MÜHENDİSLİK NOTU]: Alpha (Büyüklük/Adet güncelleme hızı) ve Beta (Olasılık güncelleme hızı).
+        # Alpha (Büyüklük/Adet güncelleme hızı) ve Beta (Olasılık güncelleme hızı).
         # Çoğu akademik tezde bu değerler 0.1 gibi sabit (hardcoded) verilir ve geçilir. 
         # Bizim sistemimizde "auto" özelliği vardır. Her C-Sınıfı parça kendi karakterine göre 
         # kendi optimum Alpha ve Beta değerini matematiksel olarak kendi bulur.
@@ -40,13 +39,13 @@ class TSB:
             return forecast, prob_series, mag_series
             
         first_demand = first_demand_idx[0]
-        # Sistemin başlangıç noktası (Seed)
+        # Sistemin başlangıç noktası 
         z[first_demand] = demand[first_demand]
         p[first_demand] = 1
 
         for t in range(first_demand + 1, n):
             # [VERİ SIZINTISI ENGELİ - SIFIR GELECEK ETKİSİ]:
-            # Jürinin dikkatini buraya çekin! t. haftanın tahmini (forecast[t]), sadece ama sadece 
+            # t. haftanın tahmini (forecast[t]), sadece ama sadece 
             # bir önceki haftanın (t-1) olasılık (p) ve büyüklük (z) değerleri çarpılarak bulunur.
             # Modelin geleceği (demand[t]) görerek kopya çekmesi fiziksel ve matematiksel olarak imkansızdır.
             forecast[t] = z[t-1] * p[t-1]
@@ -56,7 +55,7 @@ class TSB:
             # 1. Aşama: Olasılık (P) Güncellemesi - TSB'nin Kalbi
             indicator = 1 if demand[t] > 0 else 0
             # Eğer o hafta talep GELMEDİYSE (indicator=0), P (Olasılık) değeri Beta katsayısı kadar AŞAĞI çekilir.
-            # Bu sayede parça "Ölü (Obsolete)" ise sistem bunu hemen anlar ve YZ'ye sinyal yollar.
+            # Bu sayede parça "Ölü (Obsolete)" ise sistem bunu hemen anlar ve makine öğrenmesine sinyal yollar.
             p[t] = p[t-1] + beta * (indicator - p[t-1])
             p[t] = np.clip(p[t], 0.0, 1.0)
             

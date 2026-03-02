@@ -75,5 +75,5 @@ def load_and_preprocess_data(file_path):
         processed_dfs.append(sku_df)
 
     # Tamamen temizlenmiş, kayıp haftaları doldurulmuş, çoklu üretim araçlarıyla korele edilmiş
-    # ve makine öğrenmesi eğitimine %100 hazır veri setini (Dataframe) ana motora gönderiyoruz.
+    # ve makine öğrenmesi eğitimine %100 hazır veri setini (Dataframe) ana motora gönderiyoruz. 
     return pd.concat(processed_dfs, ignore_index=True)

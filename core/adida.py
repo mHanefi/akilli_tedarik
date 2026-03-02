@@ -19,6 +19,7 @@ class ADIDA:
         # Bu düşük değer, modelin anlık 'gürültülere' (spikes) karşı dirençli olmasını sağlar.
         self.aggregation_window = aggregation_window
         self.alpha = alpha  # Toplulaştırılmış seri için Üstel Düzeltme (SES) katsayısı
+        
 
     def aggregate(self, series):
         demand = pd.Series(series).fillna(0).values

@@ -192,4 +192,4 @@ def optimize_inventory(forecast, hist_demand, lead_time, review_period, target_s
         "toplam_maliyet_euro": round(final_order * birim_fiyat, 2),
         "final_stockout_risk": round(risk, 3),
         "wos": round(weeks_of_supply, 1)
-    }
+    } 

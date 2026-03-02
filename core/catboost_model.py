@@ -66,5 +66,5 @@ class CatBoostModel:
         # Bu fonksiyon, modelin "Ben bu tahmini yaparken yüzde kaç ADIDA'ya, yüzde kaç TGE üretimine, 
         # yüzde kaç SBA'ya baktım?" sorusunun cevabını (Öznitelik Ağırlıklarını) dışarı verir. 
         # Sistemin "Açıklanabilir, Şeffaf ve Güvenilir" (White-Box) olduğunu kanıtlar!
-        # ====================================================================================
+        # ==================================================================================== 
         return self.model.get_feature_importance(prettified=True)

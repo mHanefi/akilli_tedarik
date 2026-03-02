@@ -91,7 +91,7 @@ class SBA:
         else:
             self.best_alpha_ = self.alpha
             
-        # Optimize edilmiş parametrelerle son hesaplama yapılır.
+        # Optimize edilmiş parametrelerle son hesaplama yapılır. 
         # Bu pürüzsüzleştirilmiş "SBA Serisi", Makine Öğrenmesi (CatBoost) trendi kavraması için ana kolonlardan biri olur.
         forecast = self._calculate_forecast(demand, self.best_alpha_)
         return pd.Series(forecast, index=series.index)
