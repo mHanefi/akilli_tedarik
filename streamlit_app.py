@@ -7,6 +7,34 @@ import plotly.express as px
 import plotly.graph_objects as go
 import math
 import numpy as np
+import base64
+from PIL import Image # SÜNMEYİ ENGELLEYEN KÜTÜPHANE EKLENDİ
+
+# =========================================================
+# GÖRSEL MİMARİ: LOGO ŞİFRELEME VE FAVICON DÜZELTİCİ
+# =========================================================
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except Exception as e:
+        return ""
+
+def get_square_favicon(image_path):
+    # Logoyu sünmekten kurtaran otomatik kareleme motoru
+    try:
+        img = Image.open(image_path)
+        max_dim = max(img.size)
+        square_img = Image.new("RGBA", (max_dim, max_dim), (0, 0, 0, 0)) # Görünmez kare
+        offset = ((max_dim - img.size[0]) // 2, (max_dim - img.size[1]) // 2)
+        square_img.paste(img, offset)
+        return square_img
+    except Exception:
+        return "📦" # Dosya bulunamazsa standart ikon
+
+logo_path = "man_logo.png" 
+logo_base64 = get_base64_image(logo_path)
+favicon_img = get_square_favicon(logo_path)
 
 from core.data_pipeline import load_and_preprocess_data
 from app import (
@@ -21,7 +49,7 @@ from app import (
 # =========================================================
 st.set_page_config(
     page_title="MAN Türkiye | Siparişleme Algoritması",
-    page_icon="🚌",
+    page_icon=favicon_img, # Artık sünmeyen, kusursuz karelenmiş logomuz!
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -85,17 +113,23 @@ def load_demand(path: str): return load_and_preprocess_data(path)
 @st.cache_data(show_spinner=False)
 def load_plan(path: str, ext: str): return pd.read_csv(path) if ext == ".csv" else pd.read_excel(path)
 
-# feat_imp key'i eklendi!
 for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metrics": {}, "financials": {}, "feat_imp": pd.DataFrame()}.items():
     if key not in st.session_state: st.session_state[key] = default
 
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/5/54/Logo_MAN.png", width=150)
-    st.markdown("<hr style='margin-top:0; margin-bottom:20px; border: 1px solid #D4AF37;'>", unsafe_allow_html=True)
+    # FILTRELER SİLİNDİ: Logo tamamen saf ve keskin!
+    if logo_base64:
+        st.markdown(f'<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,{logo_base64}" width="160"></div>', unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ man_logo.png bulunamadı!")
+        
+    st.markdown("<h4 style='text-align: center; color: #D4AF37; margin-bottom: 20px;'>Türkiye Fabrikası</h4>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin-top:0; margin-bottom:20px; border: 1px solid rgba(212, 175, 55, 0.3);'>", unsafe_allow_html=True)
+    
     st.markdown("### ⚙️ Operasyon Parametreleri")
     review_period = st.slider("📆 Gözden Geçirme (Hafta)", 1, 12, 4, help="Siparişlerin ne sıklıkla değerlendirilip sisteme girileceğini belirler. Örneğin: 4, ayda bir kez sipariş verileceği anlamına gelir.")
     service_level = st.slider("🛡️ Hedef Hizmet Düzeyi", 0.80, 0.99, 0.95, 0.01, help="İstenen stok bulunabilirlik oranıdır. %95, üretim bandında parçanın %95 ihtimalle hazır bulunmasını hedefler.")
-    forecast_steps = st.slider("🔮 Tahmin Ufku (Hafta)", 4, 16, 8, help="Yapay zekanın gelecekteki kaç haftanın tüketimini öngöreceğini belirler.")
+    forecast_steps = st.slider("🔮 Tahmin Ufku (Hafta)", 4, 16, 8, help=" Algoritmanın gelecekteki kaç haftanın tüketimini öngöreceğini belirler.")
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown(
@@ -115,10 +149,19 @@ with st.sidebar:
 </div>
 </div>""", unsafe_allow_html=True)
 
+# FILTRELER SİLİNDİ: Logo tamamen saf ve keskin!
+if logo_base64:
+    img_tag = f'<img src="data:image/png;base64,{logo_base64}" width="110" style="margin-right: 25px;">'
+else:
+    img_tag = ""
+
 st.markdown(
-"""<div class="glass-card">
+f"""<div class="glass-card" style="display: flex; align-items: center; border-left: 8px solid #D4AF37;">
+{img_tag}
+<div>
 <div class="hero-title">MAN Türkiye A.Ş. | Siparişleme Algoritması</div>
-<p class="hero-sub">Kanban Parçalar için Çoklu Ürün Ağacı (BOM) & Hibrit (ADIDA+SBA+TSB+CatBoost) Envanter Optimizasyonu</p>
+<p class="hero-sub" style="margin: 0;">Kanban Parçalar için Çoklu Ürün Ağacı (BOM) & Hibrit (ADIDA+SBA+TSB+CatBoost) Envanter Optimizasyonu</p>
+</div>
 </div>""", unsafe_allow_html=True)
 st.write("")
 
@@ -130,7 +173,7 @@ with tab_in:
     with c1: up_demand = st.file_uploader("📄 Geçmiş Tüketim (.xlsx / .xls)", type=["xlsx", "xls", "csv"], help="40 Parçanın geçmişte haftalık olarak kaç adet tüketildiğini içeren tablo.")
     with c2: up_plan = st.file_uploader("🧾 Üretim Planı (.xlsx / .xls)", type=["xlsx", "xls", "csv"], help="Önümüzdeki haftalarda 10 farklı MAN/NEOPLAN modelinden kaçar adet üretileceğini gösteren plan.")
     
-    if st.button("🚀 ANALİZİ VE OPTİMİZASYONU BAŞLAT", use_container_width=True, help="Tüm verileri yapay zeka modeline gönderir ve optimum sipariş adetlerini hesaplar."):
+    if st.button("🚀 ANALİZİ VE OPTİMİZASYONU BAŞLAT", use_container_width=True, help="Tüm verileri algoritmaya gönderir ve optimum sipariş adetlerini hesaplar."):
         if not (up_demand and up_plan): st.error("⚠️ Lütfen her iki dosyayı da yüklediğinizden emin olun!")
         else:
             ext_d = os.path.splitext(up_demand.name)[1].lower()
@@ -141,17 +184,16 @@ with tab_in:
                 d_path, p_path = td.name, tp.name
 
             try:
-                with st.spinner("Çoklu araç üretim planları yapay zekaya entegre ediliyor ve siparişler hesaplanıyor..."):
+                with st.spinner("Çoklu araç üretim planları makine öğrenmesine entegre ediliyor ve siparişler hesaplanıyor..."):
                     df = load_demand(d_path); plan_df = load_plan(p_path, ext_p)
                     g_df = build_global_dataset(df)
                     
                     X = g_df.drop(["date", "demand", "mevcut_stok", "lot_size", "birim_fiyat"], axis=1, errors='ignore')
                     y = g_df["demand"]
                     
-                    # 3 değişkeni de alıyoruz!
                     model, metrics, feat_imp = train_and_validate_model(X, y, ["sku","parca_ailesi"])
                     st.session_state.metrics = metrics
-                    st.session_state.feat_imp = feat_imp # YZ karar ağırlıkları kaydedildi
+                    st.session_state.feat_imp = feat_imp 
                     
                     res_list = []; total_yeni_maliyet = 0.0; total_eski_maliyet = 0.0
                     for sku in df["sku"].unique():
@@ -225,7 +267,7 @@ with tab_dash:
         else:
             fark_text = "<div style='color:#94a3b8; font-weight:bold; font-size: 0.9rem; margin-top:3px;'>Geleneksel Sistemle Eşit</div>"
         
-        k1.markdown(f'<div class="kpi"><div class="kpi-title">📉 Mevcut Bütçe <span class="tooltip-icon" title="Eğer yapay zeka kullanılmasaydı; fabrikanın sadece geçmiş tüketim ortalamasına ve Min-Max güvenlik katsayılarına dayanarak vereceği kör siparişlerin maliyetidir.">?</span></div><div class="kpi-value">€{f["old"]:,.2f}</div></div>', unsafe_allow_html=True)
+        k1.markdown(f'<div class="kpi"><div class="kpi-title">📉 Mevcut Bütçe <span class="tooltip-icon" title="Eğer hibrit makine öğrenmesi modeli kullanılmasaydı; fabrikanın sadece geçmiş tüketim ortalamasına ve Min-Max güvenlik katsayılarına dayanarak vereceği kör siparişlerin maliyetidir.">?</span></div><div class="kpi-value">€{f["old"]:,.2f}</div></div>', unsafe_allow_html=True)
         k2.markdown(f'<div class="kpi"><div class="kpi-title">💸 Optimize Bütçe <span class="tooltip-icon" title="Modelin gelecekteki üretim planını (MRP) hesaba katarak hesapladığı optimum siparişlerin maliyetidir.">?</span></div><div class="kpi-value">€{f["new"]:,.2f}</div>{fark_text}</div>', unsafe_allow_html=True)
         k3.markdown(f'<div class="kpi"><div class="kpi-title">📦 Analiz Edilen Parça <span class="tooltip-icon" title="Sistemde başarıyla işlenen toplam C-Sınıfı ortak (BOM) parça sayısı.">?</span></div><div class="kpi-value">{len(r)} Adet</div></div>', unsafe_allow_html=True)
         
@@ -287,7 +329,7 @@ with tab_ai:
 <div style="display: flex; gap: 20px; justify-content: space-between; flex-wrap: wrap; margin-top: 15px;">
 
 <div class="glass-metric" style="flex: 1; min-width: 220px;">
-<div class="m-title">⚖️ MASE (ÖLÇEKLİ) <span class="tooltip-icon" title="Yapay zekanın standart (naif) tahmine göre ne kadar üstün olduğunu gösterir. BİTİRME RAPORU Sayfa 17'de açıklandığı üzere sistemin temel performans göstergesidir.">?</span></div>
+<div class="m-title">⚖️ MASE (ÖLÇEKLİ) <span class="tooltip-icon" title="Hibrit makine öğrenmesi algoritmasının standart tahmine göre ne kadar üstün olduğunu gösterir. BİTİRME RAPORU Sayfa 17'de açıklandığı üzere sistemin temel performans göstergesidir.">?</span></div>
 <div class="m-val" style="color: #D4AF37;">{mase}</div>
 <div class="m-sub" style="color: {mase_col}; border: 1px solid {mase_col}50; background: {mase_col}15;">Referans: < 1.0 ({mase_txt})</div>
 </div>
@@ -307,9 +349,8 @@ with tab_ai:
 </div>
 """, unsafe_allow_html=True)
 
-        # XAI (Explainable AI) Karar Ağırlıkları Grafiği
-        st.markdown("<h4 style='color: #D4AF37; margin-top: 40px;'>🔍 Açıklanabilir Yapay Zeka: Model Karar Ağırlıkları</h4>", unsafe_allow_html=True)
-        st.markdown("<p style='color: #94a3b8; font-size: 0.85rem;'>Yapay zekanın siparişleri hesaplarken hangi verilere ne oranda (% olarak) güvendiğini gösterir. Bu sayede model bir 'Kara Kutu' olmaktan çıkar.</p>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #D4AF37; margin-top: 40px;'>🔍 Açıklanabilir Makine Öğrenmesi: Model Karar Ağırlıkları</h4>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #94a3b8; font-size: 0.85rem;'> Hibrit makine öğrenmesi algoritmasının siparişleri hesaplarken hangi verilere ne oranda (% olarak) güvendiğini gösterir. Bu sayede model bir 'Kara Kutu' olmaktan çıkar.</p>", unsafe_allow_html=True)
         
         fi_df = st.session_state.feat_imp
         if not fi_df.empty:
