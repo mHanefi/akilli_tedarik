@@ -27,7 +27,7 @@ def calculate_mase(y_true, y_pred, y_train):
     # Kesikli talepte (sürekli 0 çeken veride) MAPE veya Accuracy kullanmak matematiksel intihardır.
     # Hyndman (2006)'ın önerdiği MASE (Mean Absolute Scaled Error) metriğini kullanıyoruz.
     # MASE, "Bizim devasa Makine Öğrenmesi modelimiz, 'geçen hafta ne satıldıysa bu hafta da o satılır' diyen
-    # aptal modelden ne kadar daha iyi?" sorusunun ölçeklenmiş cevabıdır.
+    # işlevsiz modelden ne kadar daha iyi?" sorusunun ölçeklenmiş cevabıdır.
     y_train_arr = np.array(y_train)
     naive_mae = np.mean(np.abs(y_train_arr[1:] - y_train_arr[:-1]))
     if naive_mae == 0: return 0.0

@@ -48,7 +48,7 @@ class CatBoostModel:
         #[ZAMAN SERİSİ ÇAPRAZ DOĞRULAMA (TIME-SERIES CROSS VALIDATION)]
         #"K-Fold kullanılmamasının sebebi": 
         #"Zaman serilerinde klasik K-Fold kullanmak, geleceği geçmişe karıştırmaktır (Data Leakage). 
-        #Biz burada 'Genişleyen Pencere' (Expanding Window) mantığıyla çalışan Time-Series Split kullandık. 
+        #Biz burada 'Genişleyen Pencere' mantığıyla çalışan Time-Series Split kullandık. 
         #Model sadece geçmişi görerek geleceği tahmin eder."
         
         #[BAYESYEN OPTİMİZASYON (OPTUNA)]
