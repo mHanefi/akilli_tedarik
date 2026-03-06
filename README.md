@@ -41,7 +41,7 @@ Projenin yerel bir makinede (veya fabrika intranetinde) çalıştırılması iç
 
 ```bash
 # 1. Repoyu bilgisayarınıza indirin
-git clone [https://github.com/KULLANICI_ADIN/man-siparis-ai.git](https://github.com/KULLANICI_ADIN/man-siparis-ai.git)
+git clone [https://github.com/mHanefi/man-siparis-ai.git](https://github.com/mHanefi/man-siparis-ai.git)
 cd man-siparis-ai
 
 # 2. Gerekli kütüphaneleri (Dependencies) yükleyin
