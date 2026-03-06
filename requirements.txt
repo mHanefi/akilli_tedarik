@@ -1,9 +1,12 @@
+streamlit
 pandas
 numpy
+scipy
 scikit-learn
 catboost
-optuna
-streamlit
-scipy
-matplotlib
+plotly
 openpyxl
+xlsxwriter
+Pillow
+optuna
+altair==4.2.2
