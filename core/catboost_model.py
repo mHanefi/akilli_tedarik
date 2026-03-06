@@ -1,5 +1,6 @@
 import numpy as np
 import optuna
+import pandas as pd
 from catboost import CatBoostRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error
@@ -42,19 +43,19 @@ class CatBoostModel:
         self.model = CatBoostRegressor(**self.params)
 
     def optimize_hyperparameters(self, X, y, n_trials=15):
-        """
-        ====================================================================================
-        [ZAMAN SERİSİ ÇAPRAZ DOĞRULAMA (TIME-SERIES CROSS VALIDATION)]
-        "K-Fold kullanılmamasının sebebi": 
-        "Zaman serilerinde klasik K-Fold kullanmak, geleceği geçmişe karıştırmaktır (Data Leakage). 
-        Biz burada 'Genişleyen Pencere' (Expanding Window) mantığıyla çalışan Time-Series Split kullandık. 
-        Model sadece geçmişi görerek geleceği tahmin eder."
         
-        [BAYESYEN OPTİMİZASYON (OPTUNA)]
-        "Parametreleri kafamıza göre yazmadık. Optuna kullanarak Bayesyen Optimizasyon yaptık. 
-        Grid Search gibi körlemesine aramak yerine, her denemeden ders çıkaran bir arama sistematiği inşa ettik."
-        ====================================================================================
-        """
+        #====================================================================================
+        #[ZAMAN SERİSİ ÇAPRAZ DOĞRULAMA (TIME-SERIES CROSS VALIDATION)]
+        #"K-Fold kullanılmamasının sebebi": 
+        #"Zaman serilerinde klasik K-Fold kullanmak, geleceği geçmişe karıştırmaktır (Data Leakage). 
+        #Biz burada 'Genişleyen Pencere' (Expanding Window) mantığıyla çalışan Time-Series Split kullandık. 
+        #Model sadece geçmişi görerek geleceği tahmin eder."
+        
+        #[BAYESYEN OPTİMİZASYON (OPTUNA)]
+        #"Parametreleri kafamıza göre yazmadık. Optuna kullanarak Bayesyen Optimizasyon yaptık. 
+        #Grid Search gibi körlemesine aramak yerine, her denemeden ders çıkaran bir arama sistematiği inşa ettik."
+        #====================================================================================
+        
         def objective(trial):
             # Modelin arayacağı optimum parametre uzayı (Ağaç derinliği, Öğrenme hızı, L2 Regülarizasyonu)
             param = {
@@ -126,6 +127,7 @@ class CatBoostModel:
         return self.model.predict(X)
         
     def get_best_iteration(self):
+
         # Modelin "Early Stopping" ile kaçıncı ağaçta durduğunu raporlar. (Sistematik Verimlilik)
         return self.model.get_best_iteration()
 
