@@ -86,7 +86,7 @@ def create_advanced_dummy_data():
                 "birim_fiyat": sku["birim_fiyat"],
                 "lot_size": sku["lot_size"],
                 # MANTIK: Sipariş verdirtmek için başlangıç stoğunu çok tehlikeli/düşük seviyede tutuyoruz!
-                "mevcut_stok": np.random.randint(0, max(5, int(base_demand * 0.3))) 
+                "mevcut_stok": np.random.randint(int(base_demand * sku["lead_time"] * 0.5), int(base_demand * sku["lead_time"] * 1.5)) 
             }
             
             # 10 farklı aracın üretim planı modele kolon kolon veriliyor
