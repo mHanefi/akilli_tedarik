@@ -6,10 +6,8 @@ def calculate_nbd_parameters(mean, variance):
     """Negatif Binom Dağılımı (NBD) için parametre dönüşümü."""
     if mean <= 0:
         return 1, 1 
-    # Aralıklı talepte varyans her zaman ortalamadan büyük olmalıdır (Overdispersion)
     if variance <= mean:
         variance = mean * 1.1 
-        
     p = mean / variance
     n = (mean ** 2) / (variance - mean)
     return n, p
@@ -32,7 +30,7 @@ def create_advanced_dummy_data():
     future_prod = {m: np.random.randint(5, 25, size=8) for m in models}
 
     skus = []
-    # 40 Adet Ortak Kullanımlı (BOM) Parça Üretiyoruz
+    # 40 Adet Ortak Kullanımlı (BOM) Parça
     for i in range(1, 41):
         bom = np.random.choice([0, 1, 2, 4], size=10, p=[0.4, 0.3, 0.2, 0.1])
         if sum(bom) == 0: 
@@ -55,7 +53,7 @@ def create_advanced_dummy_data():
             # 1. Beklenen Temel Talep
             base_demand = sum(sku["bom"][j] * hist_prod[models[j]][t] for j in range(10))
             
-            # 2. AKADEMİK ZINB DAĞILIMI (Talep Gürültüsü)
+            # 2. AKADEMİK ZINB DAĞILIMI
             if base_demand == 0:
                 demand = 0
             else:
@@ -68,7 +66,7 @@ def create_advanced_dummy_data():
                     n_param, p_param = calculate_nbd_parameters(mean_size, var_size)
                     demand = np.random.negative_binomial(n=n_param, p=p_param)
 
-            # 3. OTOMOTİV (JIT/KANBAN) (s, S) STOK SENARYOSU
+            # 3. OTOMOTİV (JIT/KANBAN) (s, S) STOK VE ŞOK SENARYOSU
             expected_lead_time_demand = base_demand * sku["lead_time"]
             safety_stock = int(expected_lead_time_demand * (sku["overdispersion"] * 0.15)) 
             reorder_point = expected_lead_time_demand + safety_stock
@@ -77,8 +75,14 @@ def create_advanced_dummy_data():
             if reorder_point >= max_stock_level: 
                 max_stock_level = reorder_point + 1
                 
-            # O anki sistemdeki stok durumu
-            hesaplanan_stok = np.random.randint(int(reorder_point), int(max_stock_level + 1))
+            # TEDARİK ZİNCİRİ ŞOKU EKLENDİ
+            şok_ihtimali = np.random.rand()
+            if şok_ihtimali < 0.30: 
+                # %30 ihtimalle kriz: Stoklar tehlike sınırının altında kalır
+                hesaplanan_stok = np.random.randint(0, int(expected_lead_time_demand * 0.7) + 1)
+            else:
+                # %70 ihtimalle normal operasyon: (s, S) politikası korunur
+                hesaplanan_stok = np.random.randint(int(reorder_point), int(max_stock_level + 1))
 
             # 4. Kayıt Oluşturma
             rec = {
@@ -89,7 +93,7 @@ def create_advanced_dummy_data():
                 "parca_ailesi": sku["parca_ailesi"],
                 "birim_fiyat": sku["birim_fiyat"],
                 "lot_size": sku["lot_size"],
-                "mevcut_stok": hesaplanan_stok # Yeni otomotiv matematiği buraya bağlandı
+                "mevcut_stok": hesaplanan_stok 
             }
             
             for j, m in enumerate(models):
@@ -106,7 +110,7 @@ def create_advanced_dummy_data():
         plan_records.append(rec)
 
     pd.DataFrame(plan_records).to_csv("data/production_plan.csv", index=False)
-    print("✅ 40 Parça ve 10 Araçlık Veri Oluşturuldu!")
+    print("✅ 40 Parça Verisi Başarıyla Oluşturuldu!")
 
 if __name__ == "__main__":
     create_advanced_dummy_data()
