@@ -288,7 +288,7 @@ with tab_table:
                 "Maliyet": "€{:,.2f}", 
                 "Risk": "{:.1%}", 
                 "Yeterlilik (Hf)": "{:.1f}"
-            }).background_gradient(subset=["Risk"], cmap="RdYlGn_r").applymap(
+            }).background_gradient(subset=["Risk"], cmap="RdYlGn_r").map(
                 lambda val: 'font-weight: bold; color: #ef4444;' if val > 0.05 else ('font-weight: bold; color: #f59e0b;' if val > 0.01 else 'color: #10b981;'),
                 subset=["Risk"]
             ).set_properties(**{
