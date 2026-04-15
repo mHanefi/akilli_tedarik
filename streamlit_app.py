@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import math
 import numpy as np
 import base64
-from PIL import Image # SÜNMEYİ ENGELLEYEN KÜTÜPHANE EKLENDİ
+from PIL import Image 
 
 # =========================================================
 # GÖRSEL MİMARİ: LOGO ŞİFRELEME VE FAVICON DÜZELTİCİ
@@ -21,16 +21,16 @@ def get_base64_image(image_path):
         return ""
 
 def get_square_favicon(image_path):
-    # Logoyu sünmekten kurtaran otomatik kareleme motoru
+    
     try:
         img = Image.open(image_path)
         max_dim = max(img.size)
-        square_img = Image.new("RGBA", (max_dim, max_dim), (0, 0, 0, 0)) # Görünmez kare
+        square_img = Image.new("RGBA", (max_dim, max_dim), (0, 0, 0, 0))
         offset = ((max_dim - img.size[0]) // 2, (max_dim - img.size[1]) // 2)
         square_img.paste(img, offset)
         return square_img
     except Exception:
-        return "📦" # Dosya bulunamazsa standart ikon
+        return "📦" 
 
 logo_path = "man_logo.png" 
 logo_base64 = get_base64_image(logo_path)
@@ -49,7 +49,7 @@ from app import (
 # =========================================================
 st.set_page_config(
     page_title="MAN Türkiye | Siparişleme Algoritması",
-    page_icon=favicon_img, # Artık sünmeyen, kusursuz karelenmiş logomuz!
+    page_icon=favicon_img, 
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -117,7 +117,7 @@ for key, default in {"is_processed": False, "results_df": pd.DataFrame(), "metri
     if key not in st.session_state: st.session_state[key] = default
 
 with st.sidebar:
-    # FILTRELER SİLİNDİ: Logo tamamen saf ve keskin!
+   
     if logo_base64:
         st.markdown(f'<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,{logo_base64}" width="160"></div>', unsafe_allow_html=True)
     else:
@@ -149,7 +149,7 @@ with st.sidebar:
 </div>
 </div>""", unsafe_allow_html=True)
 
-# FILTRELER SİLİNDİ: Logo tamamen saf ve keskin!
+
 if logo_base64:
     img_tag = f'<img src="data:image/png;base64,{logo_base64}" width="110" style="margin-right: 25px;">'
 else:
@@ -280,7 +280,7 @@ with tab_table:
     if not st.session_state.is_processed:
         st.warning("Lütfen veri yükleyip analizi başlatın.")
     else:
-        st.markdown("### 📋 Satın Alma İş Emirleri (Riske Göre Sıralı)")
+        st.markdown("### 📋 Satın Alma İş Emirleri")
         
         def style_dataframe(df):
             return df.style.format({
@@ -329,7 +329,7 @@ with tab_ai:
 <div style="display: flex; gap: 20px; justify-content: space-between; flex-wrap: wrap; margin-top: 15px;">
 
 <div class="glass-metric" style="flex: 1; min-width: 220px;">
-<div class="m-title">⚖️ MASE (ÖLÇEKLİ) <span class="tooltip-icon" title="Hibrit makine öğrenmesi algoritmasının standart tahmine göre ne kadar üstün olduğunu gösterir. BİTİRME RAPORU Sayfa 17'de açıklandığı üzere sistemin temel performans göstergesidir.">?</span></div>
+<div class="m-title">⚖️ MASE (ÖLÇEKLİ) <span class="tooltip-icon" title="Hibrit makine öğrenmesi algoritmasının standart tahmine göre ne kadar üstün olduğunu gösterir sistemin temel performans göstergesidir.">?</span></div>
 <div class="m-val" style="color: #D4AF37;">{mase}</div>
 <div class="m-sub" style="color: {mase_col}; border: 1px solid {mase_col}50; background: {mase_col}15;">Referans: < 1.0 ({mase_txt})</div>
 </div>
